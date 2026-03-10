@@ -339,11 +339,13 @@ const CountdownLaunch = ({ onComplete }) => {
     return () => clearTimeout(gFallback);
   }, [phase]);
 
-  /* Capture any click/tap during loading as user gesture → unlock speech */
+  /* Capture any click/tap during loading as user gesture → unlock speech + audio */
   const handleGesture = useCallback(() => {
     if (gestureRef.current) return;
     gestureRef.current = true;
     readyRef.current.gesture = true;
+    /* Resume AudioContext (required on mobile) */
+    if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
     /* Warm up speech engine with silent utterance inside user gesture */
     if (window.speechSynthesis) {
       try {
@@ -634,10 +636,14 @@ const GameJourney = () => {
 
   const handleAdvance = useCallback(() => {
     if (activeIndex >= milestones.length - 1 || isFlying) return;
+    /* Resume AudioContext on mobile (needs user gesture) */
+    if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume();
     setIsFlying(true);
-    if (!isMobile) {
+    if (!isMobile || !isPortrait) {
+      /* Desktop + mobile landscape: full rocket path animation */
       animateTransition(activeIndex);
     } else {
+      /* Mobile portrait (vertical timeline): simple transition */
       setExhaustActive(true);
       thrusterStopRef.current = playThruster();
       setTimeout(() => {
@@ -655,7 +661,7 @@ const GameJourney = () => {
         confetti({ particleCount: 80 + next * 10, spread: 70, origin: { x: mx, y: my }, colors: [milestones[next].color, "#fff", "#38bdf8"] });
       }, 900);
     }
-  }, [activeIndex, isFlying, isMobile, animateTransition]);
+  }, [activeIndex, isFlying, isMobile, isPortrait, animateTransition]);
 
   useEffect(() => {
     if (!scrollRef.current) return;
