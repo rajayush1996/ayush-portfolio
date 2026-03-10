@@ -539,9 +539,24 @@ const GameJourney = () => {
   const [rocketPos, setRocketPos] = useState(null);
   const [lineProgress, setLineProgress] = useState({});
   const [exhaustActive, setExhaustActive] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
   const scrollRef = useRef(null);
   const animFrameRef = useRef(null);
   const thrusterStopRef = useRef(null);
+  const lastScrollRef = useRef(0);
+
+  /* Auto-hide header on scroll */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const pos = el.scrollLeft || el.scrollTop || 0;
+      setHeaderVisible(pos <= lastScrollRef.current || pos < 20);
+      lastScrollRef.current = pos;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [launched]);
 
   useEffect(() => {
     const check = () => {
@@ -690,21 +705,32 @@ const GameJourney = () => {
         <Motion.div className="absolute bottom-1/4 -right-40 w-[400px] h-[400px] bg-cyan-600/15 rounded-full blur-[120px]" animate={{ x: [0, -50, 0], y: [0, -60, 0] }} transition={{ duration: 19, repeat: Infinity, ease: "easeInOut" }} />
       </div>
 
-      {/* Header */}
-      <div className={`relative z-10 ${mLandscape ? "pt-16 pb-2 px-4" : "pt-24 pb-4 px-6"} text-center`}>
-        <Motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-block mb-2 md:mb-4">
-          <span className="text-xs px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-white/50 font-medium tracking-wider uppercase">Interactive Career Map</span>
-        </Motion.div>
+      {/* Header — auto-hides on scroll, reappears on scroll back */}
+      <Motion.div
+        className="fixed top-0 left-0 right-0 z-20 bg-[#060a14]/80 backdrop-blur-md"
+        initial={{ y: 0 }}
+        animate={{ y: headerVisible ? 0 : -120 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+      <div className={`${mLandscape ? "pt-2 pb-1 px-4" : "pt-6 pb-4 px-6"} text-center`}>
+        {!mLandscape && (
+          <Motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-block mb-2 md:mb-4">
+            <span className="text-xs px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-white/50 font-medium tracking-wider uppercase">Interactive Career Map</span>
+          </Motion.div>
+        )}
         <Motion.h1 initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }}
-          className={`${mLandscape ? "text-2xl" : "text-4xl md:text-6xl"} font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent mb-2 md:mb-3`}>
+          className={`${mLandscape ? "text-lg" : "text-4xl md:text-6xl"} font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent ${mLandscape ? "mb-0" : "mb-2 md:mb-3"}`}>
           The Code Odyssey
         </Motion.h1>
-        <Motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-          className={`text-white/40 ${mLandscape ? "text-xs" : "text-sm md:text-base"} max-w-md mx-auto mb-3 md:mb-6`}>
-          Unlock each milestone to reveal the story behind the code
-        </Motion.p>
-        <ProgressBar current={activeIndex} total={milestones.length} />
+        {!mLandscape && (
+          <Motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            className="text-white/40 text-sm md:text-base max-w-md mx-auto mb-3 md:mb-6">
+            Unlock each milestone to reveal the story behind the code
+          </Motion.p>
+        )}
+        {!mLandscape && <ProgressBar current={activeIndex} total={milestones.length} />}
       </div>
+      </Motion.div>
 
       {/* ======== MOBILE PORTRAIT: Rotate Prompt ======== */}
       {isMobile && isPortrait ? (
