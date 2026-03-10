@@ -736,7 +736,7 @@ const GameJourney = () => {
             Rotate device sideways
           </Motion.div>
         </div>
-      ) : isMobile ? (
+      ) : isMobile && isPortrait ? (
         <div ref={scrollRef} className="relative z-10 px-6 pb-36">
           <div className="relative ml-8">
             <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-cyan-500/30 via-pink-500/30 to-yellow-500/30" />
