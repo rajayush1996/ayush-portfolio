@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 
@@ -82,11 +82,11 @@ const MilestoneCard = ({ milestone: m, onClose }) => (
 const ProgressBar = ({ current, total }) => {
   const pct = ((current + 1) / total) * 100;
   return (
-    <div className="w-full max-w-md mx-auto mb-8">
-      <div className="flex justify-between text-xs text-white/40 mb-2 font-medium">
+    <div className="w-full max-w-xs mx-auto mb-2">
+      <div className="flex justify-between text-[10px] text-white/40 mb-1 font-medium">
         <span>Level {current + 1} / {total}</span><span>{Math.round(pct)}%</span>
       </div>
-      <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+      <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
         <Motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400"
           animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
       </div>
@@ -606,16 +606,48 @@ const GameJourney = () => {
   const mLandscape = isMobile && !isPortrait;
   const CIRCLE_SIZE = mLandscape ? 72 : 112; /* w-28 = 7rem = 112px, mobile: 72px */
   const CIRCLE_R = CIRCLE_SIZE / 2;
-  const SPACING = mLandscape ? 180 : 300;
-  const LEFT_PAD = mLandscape ? 80 : 120;
+  const LEFT_PAD = mLandscape ? 80 : 140;
+
+  /* Hand-tuned per-node positions for an organic winding path */
+  const nodeLayouts = useMemo(() => mLandscape
+    ? [  /* mobile landscape — compact */
+      { x: 80,   y: 70  },
+      { x: 260,  y: 140 },
+      { x: 460,  y: 55  },
+      { x: 650,  y: 160 },
+      { x: 860,  y: 60  },
+      { x: 1040, y: 150 },
+      { x: 1240, y: 50  },
+      { x: 1420, y: 155 },
+      { x: 1620, y: 65  },
+    ]
+    : [  /* desktop — dramatic zigzag with varied heights & spacing */
+      { x: 140,  y: 200 },
+      { x: 480,  y: 440 },
+      { x: 780,  y: 140 },
+      { x: 1140, y: 480 },
+      { x: 1420, y: 160 },
+      { x: 1780, y: 500 },
+      { x: 2060, y: 180 },
+      { x: 2420, y: 460 },
+      { x: 2720, y: 200 },
+    ], [mLandscape]);
 
   /* Node center position - SINGLE SOURCE OF TRUTH for both SVG and DOM */
-  const getCenter = useCallback((i) => ({
-    x: LEFT_PAD + i * SPACING,
-    y: (mLandscape ? 80 : 260) + (i % 2 === 0 ? 0 : (mLandscape ? 50 : 120)),
-  }), [LEFT_PAD, SPACING, mLandscape]);
+  const getCenter = useCallback((i) => nodeLayouts[i] || { x: 0, y: 0 }, [nodeLayouts]);
 
-  /* Get line path from circle EDGE to circle EDGE */
+  /* Get line path — each segment gets a unique organic curve shape */
+  const curveStyles = useMemo(() => [
+    "swoopDown",   /* 0→1: wide downward arc */
+    "loopUp",      /* 1→2: tall upward parabola */
+    "uBend",       /* 2→3: deep U-bend dipping below both nodes */
+    "gentleS",     /* 3→4: gentle S-curve */
+    "sharpRise",   /* 4→5: steep rise with overshoot */
+    "wideParabola",/* 5→6: broad parabolic arc */
+    "tightDip",    /* 6→7: tight dip below then back up */
+    "longSweep",   /* 7→8: long sweeping arc */
+  ], []);
+
   const getEdgePath = useCallback((i) => {
     const c1 = getCenter(i);
     const c2 = getCenter(i + 1);
@@ -624,17 +656,90 @@ const GameJourney = () => {
     const dist = Math.sqrt(dx * dx + dy * dy);
     const ux = dx / dist;
     const uy = dy / dist;
-    /* Start/end at circle edge, not center */
-    const sx = c1.x + ux * (CIRCLE_R + 4);
-    const sy = c1.y + uy * (CIRCLE_R + 4);
-    const ex = c2.x - ux * (CIRCLE_R + 4);
-    const ey = c2.y - uy * (CIRCLE_R + 4);
-    /* Cubic bezier with control points for a nice curve */
-    const midX = (sx + ex) / 2;
-    const cp1x = sx + (ex - sx) * 0.3;
-    const cp2x = sx + (ex - sx) * 0.7;
-    return `M${sx},${sy} C${cp1x},${sy} ${cp2x},${ey} ${ex},${ey}`;
-  }, [getCenter, CIRCLE_R]);
+    /* Start/end right at circle edge */
+    const sx = c1.x + ux * (CIRCLE_R + 2);
+    const sy = c1.y + uy * (CIRCLE_R + 2);
+    const ex = c2.x - ux * (CIRCLE_R + 2);
+    const ey = c2.y - uy * (CIRCLE_R + 2);
+    const style = curveStyles[i] || "gentleS";
+    const spanX = ex - sx;
+    const amp = mLandscape ? 60 : 140;
+    /* Lead-out distance: first control point must be at least this far
+       from the start in the departure direction, ensuring the curve
+       leaves the planet tangentially and never loops back through it. */
+    const leadOut = mLandscape ? 40 : 80;
+
+    /* Helper: ensure cp1 departs away from c1 (positive projection onto u) */
+    const safeCp1 = (cpx, cpy) => {
+      const vx = cpx - sx, vy = cpy - sy;
+      const proj = vx * ux + vy * uy;
+      if (proj < leadOut) {
+        return { x: sx + ux * leadOut + (vx - ux * proj), y: sy + uy * leadOut + (vy - uy * proj) };
+      }
+      return { x: cpx, y: cpy };
+    };
+    /* Helper: ensure cp2 approaches c2 from outside (positive projection onto -u) */
+    const safeCp2 = (cpx, cpy) => {
+      const vx = cpx - ex, vy = cpy - ey;
+      const proj = vx * (-ux) + vy * (-uy);
+      if (proj < leadOut) {
+        return { x: ex - ux * leadOut + (vx + ux * proj), y: ey - uy * leadOut + (vy + uy * proj) };
+      }
+      return { x: cpx, y: cpy };
+    };
+
+    let cp1, cp2;
+    switch (style) {
+      case "swoopDown": {
+        cp1 = safeCp1(sx + spanX * 0.25, sy + amp * 1.2);
+        cp2 = safeCp2(sx + spanX * 0.75, ey + amp * 0.6);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      case "loopUp": {
+        cp1 = safeCp1(sx + spanX * 0.3, Math.min(sy, ey) - amp * 1.5);
+        cp2 = safeCp2(sx + spanX * 0.7, Math.min(sy, ey) - amp * 1.2);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      case "uBend": {
+        const bottom = Math.max(sy, ey) + amp * 1.6;
+        cp1 = safeCp1(sx + spanX * 0.15, bottom);
+        cp2 = safeCp2(sx + spanX * 0.85, bottom);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      case "gentleS": {
+        cp1 = safeCp1(sx + spanX * 0.4, sy - amp * 0.5);
+        cp2 = safeCp2(sx + spanX * 0.6, ey + amp * 0.5);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      case "sharpRise": {
+        cp1 = safeCp1(sx + spanX * 0.2, sy);
+        cp2 = safeCp2(sx + spanX * 0.5, Math.min(sy, ey) - amp * 1.8);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      case "wideParabola": {
+        const peak = Math.max(sy, ey) + amp * 1.3;
+        cp1 = safeCp1(sx + spanX * 0.3, peak);
+        cp2 = safeCp2(sx + spanX * 0.7, peak);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      case "tightDip": {
+        const dip = Math.max(sy, ey) + amp * 0.9;
+        cp1 = safeCp1(sx + spanX * 0.35, dip);
+        cp2 = safeCp2(sx + spanX * 0.65, dip);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      case "longSweep": {
+        cp1 = safeCp1(sx + spanX * 0.2, sy + amp * 0.8);
+        cp2 = safeCp2(sx + spanX * 0.8, ey - amp * 1.1);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+      default: {
+        cp1 = safeCp1(sx + spanX * 0.3, sy);
+        cp2 = safeCp2(sx + spanX * 0.7, ey);
+        return `M${sx},${sy} C${cp1.x},${cp1.y} ${cp2.x},${cp2.y} ${ex},${ey}`;
+      }
+    }
+  }, [getCenter, CIRCLE_R, curveStyles, mLandscape]);
 
   /* Animate rocket along path + draw line simultaneously */
   const animateTransition = useCallback((segIndex) => {
@@ -656,6 +761,16 @@ const GameJourney = () => {
       const pt = tempPath.getPointAtLength(eased * totalLen);
       setRocketPos({ x: pt.x, y: pt.y - 24 });
       setLineProgress(prev => ({ ...prev, [segIndex]: eased }));
+      /* Auto-scroll to keep rocket in view */
+      if (scrollRef.current) {
+        const container = scrollRef.current;
+        const vw = container.clientWidth;
+        const vh = container.clientHeight;
+        const targetScrollLeft = pt.x - vw / 2;
+        const targetScrollTop = pt.y - vh / 2;
+        container.scrollLeft += (targetScrollLeft - container.scrollLeft) * 0.12;
+        container.scrollTop += (targetScrollTop - container.scrollTop) * 0.12;
+      }
       if (t < 1) {
         animFrameRef.current = requestAnimationFrame(step);
       } else {
@@ -715,8 +830,11 @@ const GameJourney = () => {
   useEffect(() => () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); }, []);
 
   const typeColors = { school: "from-blue-500 to-purple-500", college: "from-orange-500 to-red-500", work: "from-green-500 to-cyan-500" };
-  const totalW = LEFT_PAD * 2 + (milestones.length - 1) * SPACING + CIRCLE_SIZE;
-  const totalH = mLandscape ? 260 : 520;
+  const lastNode = nodeLayouts[nodeLayouts.length - 1];
+  const totalW = lastNode.x + LEFT_PAD + CIRCLE_SIZE;
+  const maxY = Math.max(...nodeLayouts.map(n => n.y));
+  const curveExtra = mLandscape ? 120 : 280; /* extra space for curves that dip below nodes */
+  const totalH = maxY + CIRCLE_SIZE + curveExtra;
 
   return (
     <div className="relative min-h-screen bg-[#060a14] text-white overflow-hidden">
@@ -735,30 +853,33 @@ const GameJourney = () => {
 
       {/* Header — hidden in landscape, auto-hides on scroll otherwise */}
       <Motion.div
-        className="fixed top-0 left-0 right-0 z-20 bg-[#060a14]/80 backdrop-blur-md"
+        className={`fixed left-0 right-0 z-20 bg-[#060a14]/80 backdrop-blur-md ${mLandscape ? "top-0" : "top-[68px]"}`}
         initial={{ y: 0 }}
         animate={{ y: mLandscape ? -200 : headerVisible ? 0 : -200 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-      <div className={`${mLandscape ? "pt-2 pb-1 px-4" : "pt-6 pb-4 px-6"} text-center`}>
+      <div className={`${mLandscape ? "pt-2 pb-1 px-4" : "pt-3 pb-2 px-6"} text-center`}>
         {!mLandscape && (
-          <Motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-block mb-2 md:mb-4">
-            <span className="text-xs px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-white/50 font-medium tracking-wider uppercase">Interactive Career Map</span>
+          <Motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-block mb-1">
+            <span className="text-[10px] px-3 py-1 rounded-full bg-white/[0.06] border border-white/10 text-white/50 font-medium tracking-wider uppercase">Interactive Career Map</span>
           </Motion.div>
         )}
         <Motion.h1 initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }}
-          className={`${mLandscape ? "text-lg" : "text-4xl md:text-6xl"} font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent ${mLandscape ? "mb-0" : "mb-2 md:mb-3"}`}>
+          className={`${mLandscape ? "text-lg" : "text-2xl md:text-4xl"} font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent ${mLandscape ? "mb-0" : "mb-1"}`}>
           The Code Odyssey
         </Motion.h1>
         {!mLandscape && (
           <Motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            className="text-white/40 text-sm md:text-base max-w-md mx-auto mb-3 md:mb-6">
+            className="text-white/40 text-xs max-w-sm mx-auto mb-2">
             Unlock each milestone to reveal the story behind the code
           </Motion.p>
         )}
         {!mLandscape && <ProgressBar current={activeIndex} total={milestones.length} />}
       </div>
       </Motion.div>
+
+      {/* Spacer to push content below fixed navbar + header */}
+      {!mLandscape && <div className="h-[200px]" />}
 
       {/* ======== MOBILE PORTRAIT: Rotate Prompt ======== */}
       {isMobile && isPortrait ? (
@@ -863,7 +984,7 @@ const GameJourney = () => {
         </div>
       ) : (
         /* ======== DESKTOP ======== */
-        <div ref={scrollRef} className="relative z-10 overflow-x-auto pb-36 hide-scrollbar">
+        <div ref={scrollRef} className="relative z-10 overflow-auto pb-36 hide-scrollbar">
           {/* SINGLE CONTAINER: SVG + Nodes share same coordinate space */}
           <div style={{ width: totalW, height: totalH, position: "relative" }}>
 
@@ -960,20 +1081,20 @@ const GameJourney = () => {
               </Motion.button>
             ) : (
               <Motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-4">
-                <div className="px-10 py-4 rounded-2xl bg-gradient-to-r from-yellow-500/15 via-pink-500/15 to-cyan-500/15 border border-yellow-500/20 text-white font-bold text-lg backdrop-blur-xl text-center">
+                className={`flex ${mLandscape ? "flex-col gap-2" : "flex-row gap-3"} items-center`}>
+                <div className={`${mLandscape ? "px-5 py-2.5 rounded-xl text-sm" : "px-8 py-3.5 rounded-2xl text-base"} bg-gradient-to-r from-yellow-500/15 via-pink-500/15 to-cyan-500/15 border border-yellow-500/20 text-white font-bold backdrop-blur-xl text-center`}>
                   {"\u{1F3C6}"} Journey Complete
                 </div>
                 <Motion.button
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4, type: "spring" }}
-                  whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(6,182,212,0.3)" }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => { setActiveIndex(0); setUnlockedIndices([0]); setLineProgress({}); setRocketPos(null); }}
-                  className="px-6 py-4 rounded-2xl bg-white/[0.06] border border-white/15 text-white font-semibold text-sm backdrop-blur-xl hover:bg-white/10 transition-colors flex items-center gap-2"
+                  className={`${mLandscape ? "px-5 py-2.5 rounded-xl text-sm" : "px-8 py-3.5 rounded-2xl text-base"} bg-white/[0.06] border border-white/15 text-white font-semibold backdrop-blur-xl hover:bg-white/10 transition-colors flex items-center gap-2`}
                 >
-                  {"\u{1F504}"} Reset Journey
+                  {"\u{1F504}"} Reset
                 </Motion.button>
               </Motion.div>
             )}
