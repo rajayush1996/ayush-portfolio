@@ -866,7 +866,7 @@ const GameJourney = () => {
         )}
         <Motion.h1 initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }}
           className={`${mLandscape ? "text-lg" : "text-2xl md:text-4xl"} font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent ${mLandscape ? "mb-0" : "mb-1"}`}>
-          The Code Odyssey
+          Career Orbit
         </Motion.h1>
         {!mLandscape && (
           <Motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}

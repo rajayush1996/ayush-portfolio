@@ -97,7 +97,7 @@ const Navbar = () => {
             to="/journey"
             className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-yellow-400 hover:scale-105 transition-all text-sm font-semibold shadow-lg"
           >
-            🎮 Dev Quest
+            🚀 Career Orbit
           </Link>
         </ul>
       </div>
@@ -125,7 +125,7 @@ const Navbar = () => {
                 onClick={() => setMenuOpen(false)}
                 className="inline-block mt-4 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold"
               >
-                🎮 Dev Quest
+                🚀 Career Orbit
               </Link>
             </li>
           </Motion.ul>

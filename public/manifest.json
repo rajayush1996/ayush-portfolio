@@ -1,0 +1,16 @@
+{
+  "name": "Ayush Raj Portfolio",
+  "short_name": "AyushRaj",
+  "description": "Ayush Raj — Senior Software Engineer & Full-Stack Developer Portfolio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060a14",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icons/react.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
