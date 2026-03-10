@@ -39,6 +39,20 @@ const awards = [
     icon: "🎓",
     certificate: "/certificates/nptel-dbms.png",
   },
+  {
+    title: "System Design Certification",
+    issuer: "GeeksforGeeks",
+    year: "2023",
+    icon: "🧠",
+    certificate: "",
+  },
+  {
+    title: "Oracle Certified Java Developer",
+    issuer: "Oracle",
+    year: "2021",
+    icon: "☕",
+    certificate: "",
+  },
 ];
 
 const Awards = () => {
@@ -63,7 +77,7 @@ const Awards = () => {
   return (
     <section
       id="awards"
-      className="py-28 px-6 bg-[#0f172a] text-white relative"
+      className="py-28 px-6 bg-[#0f172a] text-white relative overflow-hidden"
       ref={sectionRef}
     >
       <Motion.h2

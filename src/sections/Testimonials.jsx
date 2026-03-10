@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Glide from "@glidejs/glide";
 import "@glidejs/glide/dist/css/glide.core.min.css";
-import { motion as Motion } from "framer-motion"
+import { motion as Motion } from "framer-motion";
 
 const testimonials = [
   {
@@ -9,16 +9,19 @@ const testimonials = [
       "Ayush is one of the rare programmers I have ever seen, you can bet on him whenever you have a difficult problem statement to be solved in a tight timeline.",
     name: "Subhanshu Jha",
     title: "Tech Lead, Psych x86",
+    gradient: "from-cyan-500/20 to-blue-500/20",
   },
   {
     quote: "Creative, passionate, and always on time. A joy to work with!",
     name: "Neha Verma",
     title: "Product Designer, Xwola",
+    gradient: "from-pink-500/20 to-rose-500/20",
   },
   {
     quote: "His attention to detail and motion UI is unmatched.",
     name: "Vineeta V.",
     title: "Recruiter, IBM GOC",
+    gradient: "from-yellow-500/20 to-amber-500/20",
   },
 ];
 
@@ -39,7 +42,7 @@ const TestimonialSlider = () => {
   }, []);
 
   return (
-    <section className="py-24 px-6 bg-[#1e293b] text-white" id="testimonials">
+    <section className="py-24 px-6 bg-[#1e293b] text-white overflow-hidden" id="testimonials">
       <h2 className="text-4xl font-bold text-center mb-12 bg-gradient-to-r from-yellow-400 to-cyan-400 text-transparent bg-clip-text">
         🧠 Words from Collaborators
       </h2>

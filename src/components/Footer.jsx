@@ -57,14 +57,10 @@ const Footer = () => {
       </div>
 
       {/* Floating animation keyframes */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
         }
       `}</style>
     </footer>

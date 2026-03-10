@@ -1,55 +1,78 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
+
+const MAX_PARTICLES = 24;
+const PARTICLE_LIFE = 800;
 
 const MouseParticles = () => {
+  const canvasRef = useRef(null);
+
   useEffect(() => {
-    // const particles = [];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const particles = [];
+    let animId;
+    let lastTime = 0;
 
-    const createParticle = (x, y) => {
-      const particle = document.createElement("div");
-      particle.className = "particle";
-      particle.style.left = `${x}px`;
-      particle.style.top = `${y}px`;
-      document.body.appendChild(particle);
-
-      setTimeout(() => {
-        particle.remove();
-      }, 1000);
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     };
+    resize();
+    window.addEventListener("resize", resize);
 
     const handleMouseMove = (e) => {
-      for (let i = 0; i < 2; i++) {
-        createParticle(e.clientX, e.clientY);
-      }
+      const now = Date.now();
+      if (now - lastTime < 50) return; /* throttle ~20fps */
+      lastTime = now;
+      if (particles.length >= MAX_PARTICLES) particles.shift();
+      particles.push({
+        x: e.clientX,
+        y: e.clientY,
+        born: now,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: -Math.random() * 1.5,
+      });
     };
 
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const now = Date.now();
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        const age = now - p.born;
+        if (age > PARTICLE_LIFE) { particles.splice(i, 1); continue; }
+        const t = age / PARTICLE_LIFE;
+        const alpha = 1 - t;
+        const r = 3 * (1 - t * 0.5);
+        p.x += p.vx;
+        p.y += p.vy;
+        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        gradient.addColorStop(0, `rgba(0,240,255,${alpha})`);
+        gradient.addColorStop(1, `rgba(255,0,229,${alpha * 0.5})`);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
     window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animId);
+    };
   }, []);
 
   return (
-    <style>{`
-      .particle {
-        position: fixed;
-        width: 6px;
-        height: 6px;
-        border-radius: 9999px;
-        background: radial-gradient(circle, #00f0ff, #ff00e5);
-        pointer-events: none;
-        animation: particle-fade 1s ease-out;
-        z-index: 9999;
-      }
-
-      @keyframes particle-fade {
-        from {
-          opacity: 1;
-          transform: scale(1);
-        }
-        to {
-          opacity: 0;
-          transform: scale(0.5) translateY(-20px);
-        }
-      }
-    `}</style>
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none"
+      style={{ zIndex: 9999 }}
+    />
   );
 };
 

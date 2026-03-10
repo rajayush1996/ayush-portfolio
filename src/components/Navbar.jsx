@@ -11,16 +11,25 @@ const Navbar = () => {
   const handleNavClick = (sectionId) => {
     setMenuOpen(false);
     if (location.pathname !== "/") {
-      navigate("/", { replace: false });
-      setTimeout(() => {
-        const el = document.getElementById(sectionId);
-        if (el) el.scrollIntoView({ behavior: "smooth" });
-      }, 300);
+      navigate("/", { replace: false, state: { scrollTo: sectionId } });
     } else {
       const el = document.getElementById(sectionId);
       if (el) el.scrollIntoView({ behavior: "smooth" });
     }
   };
+
+  /* Scroll to section after cross-page navigation */
+  React.useEffect(() => {
+    const target = location.state?.scrollTo;
+    if (target && location.pathname === "/") {
+      const check = () => {
+        const el = document.getElementById(target);
+        if (el) { el.scrollIntoView({ behavior: "smooth" }); return; }
+        requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    }
+  }, [location]);
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-white/10 border-b border-white/10">

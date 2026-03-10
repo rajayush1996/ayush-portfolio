@@ -1,300 +1,445 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { motion as Motion, useAnimation } from "framer-motion";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 
-const ANIMATION_DURATION = 1.2; // seconds
-const TOTAL_FRAMES = 60 * ANIMATION_DURATION;
-let currentFrame = 0;
+const milestones = [
+  { id: 0, type: "school", title: "Saraswati Sisu Vidya Mandir", year: "Foundation", icon: "\u{1F3EB}", color: "#38bdf8", description: "Where the journey began \u2014 first spark of curiosity.", achievements: ["Built strong fundamentals", "Discovered love for problem-solving"] },
+  { id: 1, type: "school", title: "Central Academy (Till 7th)", year: "Early Days", icon: "\u{1F3EB}", color: "#818cf8", description: "Exploring academics and extra-curriculars.", achievements: ["Top performer in mathematics", "Inter-school competitions"] },
+  { id: 2, type: "school", title: "PND Jain High School", year: "2012", icon: "\u{1F393}", color: "#c084fc", description: "Building discipline and academic excellence.", achievements: ["Board exam distinction", "Science olympiad participant"] },
+  { id: 3, type: "school", title: "Kendriya Vidyalaya (12th)", year: "2014", icon: "\u{1F393}", color: "#f472b6", description: "Senior secondary \u2014 first encounter with programming.", achievements: ["Completed 12th with Science stream", "First lines of code written"] },
+  { id: 4, type: "college", title: "B.Tech \u2013 ACE, Kurukshetra University", year: "2016\u20132020", icon: "\u{1F393}", color: "#fb923c", description: "Bachelor of Technology in Computer Science.", achievements: ["Google Code Jam Qualifier 2018 & 2019", "NPTEL Database Systems (IIT Kharagpur)", "HackerRank 5-Star Gold Badge (Python)", "TechGig Code Gladiators Semi-Finalist"], tech: ["Java", "Python", "C++", "Data Structures"] },
+  { id: 5, type: "work", title: "Psych x86 Technologies", subtitle: "Application Developer", year: "Mar 2021 \u2013 Mar 2022", location: "Hyderabad", icon: "\u{1F4BC}", color: "#4ade80", description: "First professional role \u2014 POS loan microservices & payment integrations.", achievements: ["POS loan microservices \u2014 90% efficiency boost", "JWT auth & Razorpay integrations", "Reduced API failure rate by 30%"], tech: ["Node.js", "Angular", "MongoDB", "Razorpay"] },
+  { id: 6, type: "work", title: "Kore.ai", subtitle: "Software Engineer", year: "Mar 2022 \u2013 Mar 2024", location: "Hyderabad", icon: "\u{1F916}", color: "#22d3ee", description: "Built 25+ backend services for SmartAssist AI contact center.", achievements: ["25+ backend services (Spring Boot & Node.js)", "SmartAssist routing \u2014 50% resolution efficiency", "99.9% uptime", "Jenkins CI/CD automation"], tech: ["Spring Boot", "Node.js", "React", "MongoDB", "AWS"] },
+  { id: 7, type: "work", title: "XWOLA Pvt Ltd", subtitle: "Senior Software Engineer", year: "Mar 2024 \u2013 Nov 2025", location: "Hyderabad", icon: "\u{1F680}", color: "#facc15", description: "High-availability booking platforms for 1000+ concurrent users.", achievements: ["Roberto Beach Platform \u2014 zero downtime", "40% latency reduction (Redis)", "RabbitMQ async pipeline", "Resolved 350+ production issues"], tech: ["Spring Boot", "Redis", "RabbitMQ", "AWS", "Docker"] },
+  { id: 8, type: "work", title: "Ernst & Young (EY)", subtitle: "Senior Technical Lead", year: "Nov 2025 \u2013 Present", location: "Hyderabad", icon: "\u26A1", color: "#f97316", description: "Leading event-driven serverless architecture at the Big Four.", achievements: ["AWS Lambda \u2014 ~1.5K TPS, p95 < 120ms", "CI/CD \u2014 40% fewer deployment failures", "Optimized MongoDB queries at scale", "Monitoring & observability systems"], tech: ["AWS Lambda", "Spring Boot", "MongoDB", "Kubernetes", "CI/CD"] },
+];
 
-// Fullscreen flowing curve points
-const generateMilestones = () => {
-  const baseX = 100;
-  const stepX = 250;
-  const yFlow = [120, 380, 180, 300, 140, 420, 200, 260]; // natural ups/downs
-
-  const raw = [
-    { title: "🏫 Saraswati Sisu Vidya Mandir", year: "Start" },
-    { title: "🏫 Central Academy (Till 7th)", year: "" },
-    { title: "🎓 PND Jain High School", year: "2012" },
-    { title: "🎓 Kendriya Vidyalaya (12th)", year: "2014" },
-    { title: "🎓 B.Tech – ACE (KU)", year: "2020" },
-    { title: "💼 Psych x86", year: "2022" },
-    { title: "💼 Kore.ai", year: "2024" },
-    { title: "💼 Xwola Pvt. Ltd.", year: "Present" },
-  ];
-
-  return raw.map((m, i) => ({
-    ...m,
-    x: baseX + i * stepX,
-    y: yFlow[i % yFlow.length],
-  }));
+/* ---- Starfield ---- */
+const Starfield = () => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext("2d"); let id; let stars = [];
+    const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
+    const init = () => { stars = Array.from({ length: 180 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, r: Math.random() * 1.4 + 0.4, sp: Math.random() * 0.4 + 0.08, o: Math.random(), ts: Math.random() * 0.015 + 0.004 })); };
+    const draw = () => { ctx.clearRect(0, 0, c.width, c.height); stars.forEach(s => { s.o += s.ts; if (s.o > 1 || s.o < 0.15) s.ts *= -1; s.y += s.sp; if (s.y > c.height) { s.y = 0; s.x = Math.random() * c.width; } ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,255,255,${s.o})`; ctx.fill(); }); id = requestAnimationFrame(draw); };
+    resize(); init(); draw();
+    const onResize = () => { resize(); init(); };
+    window.addEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", onResize); };
+  }, []);
+  return <canvas ref={ref} className="fixed inset-0 z-0 pointer-events-none" />;
 };
 
-const getCubicPath = (p1, p2) => {
-  const dx = (p2.x - p1.x) / 2;
-  return `M${p1.x} ${p1.y} C${p1.x + dx} ${p1.y}, ${p2.x - dx} ${p2.y}, ${
-    p2.x
-  } ${p2.y}`;
+/* ---- Detail Card Modal ---- */
+const MilestoneCard = ({ milestone: m, onClose }) => (
+  <Motion.div initial={{ opacity: 0, scale: 0.85, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.85, y: 20 }}
+    transition={{ type: "spring", damping: 22, stiffness: 280 }}
+    className="bg-[#0f172a]/95 backdrop-blur-2xl rounded-3xl p-8 border border-white/10 shadow-[0_0_60px_-15px_rgba(56,189,248,0.3)] max-w-lg w-full mx-4"
+    onClick={e => e.stopPropagation()}>
+    <div className="flex items-start justify-between mb-5">
+      <div className="flex items-center gap-4">
+        <Motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl"
+          style={{ background: `${m.color}20`, border: `2px solid ${m.color}40` }}>{m.icon}</Motion.div>
+        <div>
+          <h3 className="text-2xl font-black text-white">{m.title}</h3>
+          {m.subtitle && <p className="text-sm text-white/50 font-medium">{m.subtitle}</p>}
+        </div>
+      </div>
+      <button onClick={onClose} className="text-white/30 hover:text-white text-2xl transition-colors mt-1">{"\u2715"}</button>
+    </div>
+    <div className="flex items-center gap-2 mb-4">
+      <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ background: `${m.color}20`, color: m.color }}>{m.year}</span>
+      {m.location && <span className="text-xs px-3 py-1 rounded-full bg-white/5 text-white/50">{"\u{1F4CD}"} {m.location}</span>}
+    </div>
+    <p className="text-white/70 text-sm mb-5 leading-relaxed">{m.description}</p>
+    {m.achievements && (
+      <div className="mb-5 bg-white/[0.03] rounded-2xl p-4 border border-white/5">
+        <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 font-bold">Key Achievements</h4>
+        <ul className="space-y-2">
+          {m.achievements.map((a, i) => (
+            <Motion.li key={i} initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.07 }}
+              className="text-sm text-white/65 flex items-start gap-2.5">
+              <span className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: m.color }} /> {a}
+            </Motion.li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {m.tech && (
+      <div className="flex flex-wrap gap-2">
+        {m.tech.map((t, i) => (
+          <Motion.span key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 + i * 0.05 }}
+            className="text-xs px-3 py-1.5 rounded-full font-medium border" style={{ background: `${m.color}10`, borderColor: `${m.color}25`, color: m.color }}>{t}</Motion.span>
+        ))}
+      </div>
+    )}
+  </Motion.div>
+);
+
+/* ---- Progress Bar ---- */
+const ProgressBar = ({ current, total }) => {
+  const pct = ((current + 1) / total) * 100;
+  return (
+    <div className="w-full max-w-md mx-auto mb-8">
+      <div className="flex justify-between text-xs text-white/40 mb-2 font-medium">
+        <span>Level {current + 1} / {total}</span><span>{Math.round(pct)}%</span>
+      </div>
+      <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+        <Motion.div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400"
+          animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
+      </div>
+    </div>
+  );
 };
 
+/* ---- Exhaust Particles ---- */
+const ExhaustParticles = () => (
+  <div className="absolute left-1/2 top-full -translate-x-1/2 pointer-events-none">
+    {[...Array(8)].map((_, i) => (
+      <Motion.div key={i} className="absolute rounded-full"
+        style={{ width: 4 + Math.random() * 6, height: 4 + Math.random() * 6, left: -8 + Math.random() * 16, background: i < 3 ? "#f97316" : i < 5 ? "#facc15" : "#fb923c" }}
+        animate={{ y: [0, 30 + Math.random() * 40], opacity: [0.9, 0], scale: [1, 0.2], x: [-6 + Math.random() * 12, -12 + Math.random() * 24] }}
+        transition={{ duration: 0.4 + Math.random() * 0.3, repeat: Infinity, delay: i * 0.06, ease: "easeOut" }} />
+    ))}
+    {/* Core flame */}
+    <Motion.div className="absolute left-1/2 -translate-x-1/2 w-3 rounded-full bg-gradient-to-b from-white via-yellow-300 to-orange-500"
+      animate={{ height: [12, 20, 12], opacity: [1, 0.8, 1] }}
+      transition={{ duration: 0.15, repeat: Infinity }} />
+    {/* Smoke */}
+    {[...Array(4)].map((_, i) => (
+      <Motion.div key={`s${i}`} className="absolute rounded-full bg-white/10"
+        style={{ width: 6, height: 6, left: -4 + Math.random() * 8 }}
+        animate={{ y: [20, 55 + Math.random() * 25], opacity: [0.3, 0], scale: [0.8, 2] }}
+        transition={{ duration: 0.7 + Math.random() * 0.3, repeat: Infinity, delay: 0.2 + i * 0.1 }} />
+    ))}
+  </div>
+);
+
+/* ============ MAIN ============ */
 const GameJourney = () => {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [drawnSegments, setDrawnSegments] = useState([]);
-  const [hovered, setHovered] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [isFlying, setIsFlying] = useState(false);
+  const [unlockedIndices, setUnlockedIndices] = useState([0]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [rocketPos, setRocketPos] = useState(null);
+  const [lineProgress, setLineProgress] = useState({});
+  const [exhaustActive, setExhaustActive] = useState(false);
+  const scrollRef = useRef(null);
+  const animFrameRef = useRef(null);
 
-  const containerRef = useRef(null);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check(); window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
-  const milestones = useMemo(() => generateMilestones(), []);
-  const vehicleControls = useAnimation();
+  /* --- Layout constants --- */
+  const CIRCLE_SIZE = 112; /* w-28 = 7rem = 112px */
+  const CIRCLE_R = CIRCLE_SIZE / 2; /* 56px */
+  const SPACING = 300;
+  const LEFT_PAD = 120;
 
-  const pathRefs = useRef([]);
-  const animatedPaths = useRef(new Set());
+  /* Node center position - SINGLE SOURCE OF TRUTH for both SVG and DOM */
+  const getCenter = useCallback((i) => ({
+    x: LEFT_PAD + i * SPACING,
+    y: 260 + (i % 2 === 0 ? 0 : 120),
+  }), []);
 
-  const pathSegments = useMemo(() => {
-    return milestones.slice(1).map((m, i) => getCubicPath(milestones[i], m));
-  }, [milestones]);
+  /* Get line path from circle EDGE to circle EDGE */
+  const getEdgePath = useCallback((i) => {
+    const c1 = getCenter(i);
+    const c2 = getCenter(i + 1);
+    const dx = c2.x - c1.x;
+    const dy = c2.y - c1.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const ux = dx / dist;
+    const uy = dy / dist;
+    /* Start/end at circle edge, not center */
+    const sx = c1.x + ux * (CIRCLE_R + 4);
+    const sy = c1.y + uy * (CIRCLE_R + 4);
+    const ex = c2.x - ux * (CIRCLE_R + 4);
+    const ey = c2.y - uy * (CIRCLE_R + 4);
+    /* Cubic bezier with control points for a nice curve */
+    const midX = (sx + ex) / 2;
+    const cp1x = sx + (ex - sx) * 0.3;
+    const cp2x = sx + (ex - sx) * 0.7;
+    return `M${sx},${sy} C${cp1x},${sy} ${cp2x},${ey} ${ex},${ey}`;
+  }, [getCenter]);
 
-  const handleNext = () => {
-    if (activeIndex < milestones.length - 1) {
-      setActiveIndex((prev) => prev + 1);
-    }
-  };
-
-  const animatePath = (index, element) => {
-    const pathLength = element.getTotalLength();
-    element.style.strokeDasharray = pathLength;
-    element.style.strokeDashoffset = pathLength;
-
+  /* Animate rocket along path + draw line simultaneously */
+  const animateTransition = useCallback((segIndex) => {
+    const d = getEdgePath(segIndex);
+    const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    tempPath.setAttribute("d", d);
+    const totalLen = tempPath.getTotalLength();
+    const duration = 1600;
     const startTime = performance.now();
+    setExhaustActive(true);
+    const c1 = getCenter(segIndex);
+    setRocketPos({ x: c1.x, y: c1.y - 24 });
 
     const step = (now) => {
       const elapsed = now - startTime;
-      const progress = Math.min(elapsed / (ANIMATION_DURATION * 1000), 1);
-      const offset = pathLength * (1 - progress);
-
-      element.style.strokeDashoffset = offset;
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3); /* ease-out cubic */
+      const pt = tempPath.getPointAtLength(eased * totalLen);
+      setRocketPos({ x: pt.x, y: pt.y - 24 });
+      setLineProgress(prev => ({ ...prev, [segIndex]: eased }));
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        const next = segIndex + 1;
+        setActiveIndex(next);
+        setUnlockedIndices(prev => prev.includes(next) ? prev : [...prev, next]);
+        setIsFlying(false);
+        setRocketPos(null);
+        setExhaustActive(false);
+        confetti({ particleCount: 90 + next * 10, spread: 80, origin: { y: 0.5 }, colors: [milestones[next].color, "#fff", "#38bdf8"] });
       }
     };
+    animFrameRef.current = requestAnimationFrame(step);
+  }, [getEdgePath, getCenter]);
 
-    requestAnimationFrame(step);
-  };
-
-  // Confetti + auto-scroll
-  useEffect(() => {
-    if (activeIndex === 0) return;
-
-    const i = activeIndex - 1;
-
-    if (!drawnSegments.includes(i)) {
-      setDrawnSegments((prev) => [...prev, i]);
-
+  const handleAdvance = useCallback(() => {
+    if (activeIndex >= milestones.length - 1 || isFlying) return;
+    setIsFlying(true);
+    if (!isMobile) {
+      animateTransition(activeIndex);
+    } else {
+      setExhaustActive(true);
       setTimeout(() => {
-        confetti({
-          particleCount: 70,
-          spread: 80,
-          origin: {
-            x: milestones[activeIndex].x / 2000,
-            y: milestones[activeIndex].y / 500,
-          },
-        });
-      }, 1200);
+        const next = activeIndex + 1;
+        setActiveIndex(next);
+        setUnlockedIndices(prev => prev.includes(next) ? prev : [...prev, next]);
+        setIsFlying(false);
+        setExhaustActive(false);
+        confetti({ particleCount: 80 + next * 10, spread: 70, origin: { y: 0.6 }, colors: [milestones[next].color, "#fff", "#38bdf8"] });
+      }, 900);
     }
+  }, [activeIndex, isFlying, isMobile, animateTransition]);
 
-    const scrollContainer = containerRef.current;
-    const scrollX =
-      milestones[activeIndex].x - scrollContainer.clientWidth / 2 + 100;
-
-    scrollContainer.scrollTo({
-      left: scrollX,
-      behavior: "smooth",
-    });
-  }, [activeIndex, drawnSegments, milestones]);
-
-  // Vehicle animation along curve
   useEffect(() => {
-    if (activeIndex === 0) return;
+    if (!scrollRef.current) return;
+    const el = scrollRef.current.querySelector(`[data-milestone="${activeIndex}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  }, [activeIndex]);
 
-    const i = activeIndex - 1;
-    const pathString = pathSegments[i];
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", pathString);
-    const pathLength = path.getTotalLength();
+  useEffect(() => () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); }, []);
 
-    const prevX = milestones[i].x;
-    const nextX = milestones[i + 1].x;
-    const direction = nextX < prevX ? 1 : -1;
-
-    currentFrame = 0;
-
-    const animateFrame = () => {
-      const progress = currentFrame / TOTAL_FRAMES;
-      const point = path.getPointAtLength(progress * pathLength);
-
-      vehicleControls.set({
-        left: point.x - 16,
-        top: point.y - 24,
-        scaleX: direction,
-      });
-
-      currentFrame++;
-      if (currentFrame <= TOTAL_FRAMES) {
-        requestAnimationFrame(animateFrame);
-      }
-    };
-
-    animateFrame();
-  }, [activeIndex, milestones, pathSegments, vehicleControls]);
+  const typeColors = { school: "from-blue-500 to-purple-500", college: "from-orange-500 to-red-500", work: "from-green-500 to-cyan-500" };
+  const totalW = LEFT_PAD * 2 + (milestones.length - 1) * SPACING + CIRCLE_SIZE;
+  const totalH = 520;
 
   return (
-    <section
-      ref={containerRef}
-      className="relative w-full min-h-screen bg-[#0f172a] text-white px-6 py-16 overflow-x-auto"
-    >
-      <h2 className="text-4xl font-bold text-center mt-20 mb-12 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text">
-        🎮 Dev Footprint Journey
-      </h2>
-
-      <div className="w-full">
-        <div className="relative w-[2000px] h-[500px]">
-          <svg viewBox="0 0 2000 500" className="w-full h-full">
-            {drawnSegments.map((i) => (
-              <path
-                key={i}
-                ref={(el) => {
-                  if (el && !animatedPaths.current.has(i)) {
-                    animatedPaths.current.add(i);
-                    pathRefs.current[i] = el;
-                    animatePath(i, el);
-                  }
-                }}
-                d={pathSegments[i]}
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="4"
-                strokeDasharray="1"
-                strokeDashoffset="1"
-              />
-            ))}
-
-            {milestones.slice(0, activeIndex + 1).map((m, i) => (
-              <Motion.circle
-                key={i}
-                cx={m.x}
-                cy={m.y}
-                r={14}
-                fill={i === activeIndex ? "#facc15" : "#38bdf8"}
-                stroke="#fff"
-                strokeWidth="2"
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 1, scale: 1 }}
-              />
-            ))}
-
-            {milestones.slice(0, activeIndex + 1).map((m, i) => (
-              <Motion.text
-                key={`text-${i}`}
-                x={m.x}
-                y={m.y - 30}
-                textAnchor="middle"
-                fill="#fff"
-                className="text-sm font-medium"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                {m.title}
-              </Motion.text>
-            ))}
-
-            {milestones.slice(0, activeIndex + 1).map((m, i) =>
-              m.year ? (
-                <Motion.text
-                  key={`year-${i}`}
-                  x={m.x}
-                  y={m.y + 30}
-                  textAnchor="middle"
-                  fill="#aaa"
-                  className="text-xs"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  {m.year}
-                </Motion.text>
-              ) : null
-            )}
-          </svg>
-          <Motion.div
-            className="absolute text-2xl"
-            animate={vehicleControls}
-            transition={{ type: "tween", duration: 0.4 }}
-            style={{
-              // left: milestones[activeIndex].x - 16,
-              // top: milestones[activeIndex].y - 20,
-              scaleX: -1,
-            }}
-          >
-            🚗
-          </Motion.div>
-
-          {/* 🚗 Vehicle following path */}
-
-          {/* Button below current milestone */}
-          <Motion.div
-            className="absolute"
-            animate={{
-              left: milestones[activeIndex].x - 80,
-              top: milestones[activeIndex].y + 80,
-            }}
-            transition={{ type: "spring", stiffness: 200, damping: 15 }}
-          >
-            <Motion.button
-              onClick={handleNext}
-              disabled={activeIndex === milestones.length - 1}
-              animate={{ width: hovered ? 180 : 48 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className={`
-                h-12
-                bg-amber-500
-                text-black
-                font-bold
-                rounded-full
-                flex items-center
-                relative
-                overflow-hidden
-                shadow-md
-                transition-all
-                border border-yellow-300
-                ${hovered ? "shadow-[0_0_20px_6px_rgba(251,191,36,0.6)]" : ""}
-              `}
-            >
-              {/* Circle with arrow, triggers expansion */}
-              <div
-                className="w-12 h-12 flex items-center justify-center rounded-full text-xl cursor-pointer"
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
-              >
-                ➡️
-              </div>
-
-              {/* Reveal text only when hovered */}
-              <Motion.span
-                initial={{ opacity: 0, x: 10 }}
-                animate={{
-                  opacity: hovered ? 1 : 0,
-                  x: hovered ? 0 : 10,
-                }}
-                transition={{ duration: 0.3 }}
-                className="absolute left-14 text-sm whitespace-nowrap pointer-events-none text-white font-semibold"
-              >
-                Next Checkpoint
-              </Motion.span>
-            </Motion.button>
-          </Motion.div>
-        </div>
+    <div className="relative min-h-screen bg-[#060a14] text-white overflow-hidden">
+      <Starfield />
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <Motion.div className="absolute top-1/4 -left-40 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[120px]" animate={{ x: [0, 60, 0], y: [0, 40, 0] }} transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }} />
+        <Motion.div className="absolute bottom-1/4 -right-40 w-[400px] h-[400px] bg-cyan-600/15 rounded-full blur-[120px]" animate={{ x: [0, -50, 0], y: [0, -60, 0] }} transition={{ duration: 19, repeat: Infinity, ease: "easeInOut" }} />
       </div>
-    </section>
+
+      {/* Header */}
+      <div className="relative z-10 pt-24 pb-4 px-6 text-center">
+        <Motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-block mb-4">
+          <span className="text-xs px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-white/50 font-medium tracking-wider uppercase">Interactive Career Map</span>
+        </Motion.div>
+        <Motion.h1 initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }}
+          className="text-4xl md:text-6xl font-black bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent mb-3">
+          The Code Odyssey
+        </Motion.h1>
+        <Motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+          className="text-white/40 text-sm md:text-base max-w-md mx-auto mb-6">
+          Unlock each milestone to reveal the story behind the code
+        </Motion.p>
+        <ProgressBar current={activeIndex} total={milestones.length} />
+      </div>
+
+      {/* ======== MOBILE ======== */}
+      {isMobile ? (
+        <div ref={scrollRef} className="relative z-10 px-6 pb-36">
+          <div className="relative ml-8">
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-cyan-500/30 via-pink-500/30 to-yellow-500/30" />
+            {milestones.map((m, i) => {
+              const unlocked = unlockedIndices.includes(i);
+              const active = i === activeIndex;
+              return (
+                <Motion.div key={m.id} data-milestone={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: unlocked ? 1 : 0.25, x: 0 }}
+                  transition={{ duration: 0.5, delay: i * 0.04 }} className="relative pl-12 pb-8">
+                  <Motion.div className={`absolute left-0 top-2 w-10 h-10 -translate-x-1/2 rounded-full flex items-center justify-center text-xl border-2 transition-all duration-500
+                    ${active ? "border-yellow-400 bg-yellow-500/20 shadow-[0_0_20px_rgba(250,204,21,0.3)]" : unlocked ? "bg-white/[0.06] border-white/15" : "bg-white/[0.02] border-white/10"}`}
+                    style={unlocked && !active ? { borderColor: m.color + "50", background: m.color + "15" } : {}}
+                    animate={active ? { scale: [1, 1.15, 1] } : {}} transition={{ duration: 2, repeat: Infinity }}>
+                    {active && isFlying ? (
+                      <span className="relative">
+                        <Motion.span animate={{ y: [0, -5, 0], rotate: [0, 8, -8, 0] }} transition={{ duration: 0.5, repeat: Infinity }} className="text-xl block">{"\u{1F680}"}</Motion.span>
+                        {exhaustActive && <ExhaustParticles />}
+                      </span>
+                    ) : unlocked ? m.icon : "\u{1F512}"}
+                  </Motion.div>
+                  <Motion.div whileTap={unlocked ? { scale: 0.98 } : {}} onClick={() => unlocked && setSelectedMilestone(m)}
+                    className={`rounded-2xl p-5 border backdrop-blur-sm transition-all cursor-pointer
+                    ${active ? "bg-white/[0.08] border-white/15 shadow-lg" : unlocked ? "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06]" : "bg-white/[0.01] border-white/[0.03]"}`}
+                    style={active ? { borderColor: m.color + "40", boxShadow: `0 8px 40px -10px ${m.color}25` } : {}}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r ${typeColors[m.type]} text-white font-bold uppercase tracking-wider`}>{m.type}</span>
+                      <span className="text-[11px] text-white/30 font-medium">{m.year}</span>
+                    </div>
+                    <h3 className={`font-bold text-base ${unlocked ? "text-white" : "text-white/25"}`}>{m.title}</h3>
+                    {m.subtitle && <p className="text-xs text-white/40 mt-0.5">{m.subtitle}</p>}
+                    {unlocked && <p className="text-xs text-white/30 mt-2 line-clamp-2 leading-relaxed">{m.description}</p>}
+                    {unlocked && m.tech && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {m.tech.slice(0, 3).map((t, j) => <span key={j} className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">{t}</span>)}
+                        {m.tech.length > 3 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.06] text-white/30">+{m.tech.length - 3}</span>}
+                      </div>
+                    )}
+                  </Motion.div>
+                </Motion.div>
+              );
+            })}
+          </div>
+          {activeIndex < milestones.length - 1 && (
+            <Motion.div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50" initial={{ y: 80 }} animate={{ y: 0 }}>
+              <Motion.button onClick={handleAdvance} disabled={isFlying} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-pink-500 to-yellow-500 text-white font-bold text-base shadow-2xl shadow-pink-500/20 flex items-center gap-3 disabled:opacity-40">
+                {isFlying ? (<><Motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}>{"\u{2728}"}</Motion.span> Warping...</>) : (<>{"\u{1F680}"} Next Level</>)}
+              </Motion.button>
+            </Motion.div>
+          )}
+          {activeIndex === milestones.length - 1 && (
+            <Motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+              className="text-center mt-6 p-8 bg-gradient-to-br from-yellow-500/[0.08] via-pink-500/[0.06] to-cyan-500/[0.08] rounded-3xl border border-yellow-500/15">
+              <span className="text-5xl block mb-3">{"\u{1F3C6}"}</span>
+              <h3 className="text-2xl font-black bg-gradient-to-r from-yellow-400 to-pink-400 bg-clip-text text-transparent">Journey Complete!</h3>
+              <p className="text-white/40 text-sm mt-2">5+ years of engineering excellence</p>
+            </Motion.div>
+          )}
+        </div>
+      ) : (
+        /* ======== DESKTOP ======== */
+        <div ref={scrollRef} className="relative z-10 overflow-x-auto pb-36 hide-scrollbar">
+          {/* SINGLE CONTAINER: SVG + Nodes share same coordinate space */}
+          <div style={{ width: totalW, height: totalH, position: "relative" }}>
+
+            {/* SVG lines layer */}
+            <svg style={{ position: "absolute", top: 0, left: 0, width: totalW, height: totalH, pointerEvents: "none" }}>
+              <defs>
+                <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#38bdf8" /><stop offset="50%" stopColor="#ec4899" /><stop offset="100%" stopColor="#facc15" />
+                </linearGradient>
+                <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+              </defs>
+              {milestones.slice(0, -1).map((_, i) => {
+                const lp = lineProgress[i];
+                const isCompleted = lp === undefined && unlockedIndices.includes(i + 1);
+                const isAnimating = lp !== undefined;
+                if (!isCompleted && !isAnimating) return null;
+                const d = getEdgePath(i);
+                if (isCompleted) {
+                  return <path key={`c-${i}`} d={d} fill="none" stroke="url(#lg)" strokeWidth="2.5" strokeLinecap="round" opacity="0.5" filter="url(#glow)" />;
+                }
+                /* Animating: use dashoffset to reveal */
+                const tempP = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                tempP.setAttribute("d", d);
+                const len = tempP.getTotalLength();
+                return <path key={`a-${i}`} d={d} fill="none" stroke="url(#lg)" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" filter="url(#glow)"
+                  strokeDasharray={len} strokeDashoffset={len * (1 - (lp || 0))} />;
+              })}
+            </svg>
+
+            {/* Nodes layer - SAME coordinate space as SVG */}
+            {milestones.map((m, i) => {
+              const c = getCenter(i);
+              const unlocked = unlockedIndices.includes(i);
+              const active = i === activeIndex && !rocketPos;
+              return (
+                <Motion.div key={m.id} data-milestone={i} className="absolute flex flex-col items-center"
+                  style={{ left: c.x - CIRCLE_SIZE / 2, top: c.y - CIRCLE_SIZE / 2, width: CIRCLE_SIZE }}
+                  initial={{ opacity: 0, scale: 0 }} animate={{ opacity: unlocked ? 1 : 0.2, scale: unlocked ? 1 : 0.65 }}
+                  transition={{ duration: 0.6, delay: i * 0.06, type: "spring" }}>
+                  {/* Planet circle */}
+                  <Motion.div onClick={() => unlocked && setSelectedMilestone(m)}
+                    className="relative rounded-full flex items-center justify-center cursor-pointer transition-all duration-500 border-2"
+                    style={{
+                      width: CIRCLE_SIZE, height: CIRCLE_SIZE,
+                      borderColor: active ? m.color : unlocked ? m.color + "30" : "rgba(255,255,255,0.08)",
+                      background: active ? `linear-gradient(135deg, ${m.color}25, ${m.color}10)` : unlocked ? m.color + "08" : "rgba(255,255,255,0.02)",
+                      boxShadow: active ? `0 0 40px ${m.color}30, 0 0 80px ${m.color}15` : "none",
+                    }}
+                    whileHover={unlocked ? { scale: 1.1 } : {}} whileTap={unlocked ? { scale: 0.95 } : {}}>
+                    {active && <Motion.div className="absolute inset-[-12px] rounded-full border border-dashed" style={{ borderColor: m.color + "30" }}
+                      animate={{ rotate: 360 }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }} />}
+                    {active && <Motion.div className="absolute inset-0 rounded-full" style={{ background: m.color + "15" }}
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0, 0.4] }} transition={{ duration: 2.5, repeat: Infinity }} />}
+                    <span className="text-4xl select-none relative z-10">{unlocked ? m.icon : "\u{1F512}"}</span>
+                  </Motion.div>
+                </Motion.div>
+              );
+            })}
+
+            {/* Labels below the single container in same coord space */}
+            {milestones.map((m, i) => {
+              const c = getCenter(i);
+              const unlocked = unlockedIndices.includes(i);
+              return (
+                <div key={`lbl-${i}`} className="absolute text-center" style={{ left: c.x - 80, top: c.y + CIRCLE_R + 12, width: 160 }}>
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider inline-block" style={{ background: m.color + "20", color: m.color }}>{m.year}</span>
+                  <h3 className={`text-xs font-bold mt-1.5 leading-tight ${unlocked ? "text-white/90" : "text-white/20"}`}>{m.title}</h3>
+                  {m.subtitle && <p className="text-[10px] text-white/30 mt-0.5">{m.subtitle}</p>}
+                </div>
+              );
+            })}
+
+            {/* Rocket with exhaust */}
+            {rocketPos && (
+              <div className="absolute z-30 pointer-events-none" style={{ left: rocketPos.x - 18, top: rocketPos.y - 18 }}>
+                <Motion.div animate={{ rotate: [0, 8, -8, 0] }} transition={{ duration: 0.3, repeat: Infinity }}
+                  className="text-4xl relative">
+                  {"\u{1F680}"}
+                  <ExhaustParticles />
+                </Motion.div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom button */}
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+            {activeIndex < milestones.length - 1 ? (
+              <Motion.button onClick={handleAdvance} disabled={isFlying}
+                whileHover={{ scale: 1.04, boxShadow: "0 0 50px 10px rgba(236,72,153,0.2)" }} whileTap={{ scale: 0.96 }}
+                className="px-10 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-pink-500 to-yellow-500 text-white font-bold text-lg shadow-2xl flex items-center gap-3 backdrop-blur-sm disabled:opacity-40 transition-all">
+                {isFlying ? (<><Motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}>{"\u{2728}"}</Motion.span> Warping...</>) : (
+                  <>{"\u{1F680}"} Launch to Next Level <span className="text-sm opacity-50 ml-1">({milestones[activeIndex + 1].title.split(" ").slice(0, 2).join(" ")}...)</span></>
+                )}
+              </Motion.button>
+            ) : (
+              <Motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                className="px-10 py-4 rounded-2xl bg-gradient-to-r from-yellow-500/15 via-pink-500/15 to-cyan-500/15 border border-yellow-500/20 text-white font-bold text-lg backdrop-blur-xl text-center">
+                {"\u{1F3C6}"} Journey Complete
+              </Motion.div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
+      <AnimatePresence>
+        {selectedMilestone && (
+          <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={() => setSelectedMilestone(null)}>
+            <MilestoneCard milestone={selectedMilestone} onClose={() => setSelectedMilestone(null)} />
+          </Motion.div>
+        )}
+      </AnimatePresence>
+
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </div>
   );
 };
 
