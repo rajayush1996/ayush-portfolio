@@ -747,7 +747,7 @@ const GameJourney = () => {
     const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
     tempPath.setAttribute("d", d);
     const totalLen = tempPath.getTotalLength();
-    const duration = 1600;
+    const duration = 3000
     const startTime = performance.now();
     setExhaustActive(true);
     thrusterStopRef.current = playThruster();
@@ -757,7 +757,10 @@ const GameJourney = () => {
     const step = (now) => {
       const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3); /* ease-out cubic */
+      /* Smooth ease-in-out: slow start, gentle cruise, soft landing */
+      const eased = t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
       const pt = tempPath.getPointAtLength(eased * totalLen);
       setRocketPos({ x: pt.x, y: pt.y - 24 });
       setLineProgress(prev => ({ ...prev, [segIndex]: eased }));
