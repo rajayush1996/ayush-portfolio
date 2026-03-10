@@ -5,8 +5,25 @@ import { motion as Motion, AnimatePresence } from "framer-motion";
 const Navbar = () => {
   const links = ["Home", "About", "Projects", "Contact"];
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hiddenLandscape, setHiddenLandscape] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  /* Hide navbar on /journey in landscape */
+  React.useEffect(() => {
+    const check = () => {
+      const isJourney = location.pathname === "/journey";
+      const isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
+      setHiddenLandscape(isJourney && isLandscape);
+    };
+    check();
+    window.addEventListener("resize", check);
+    window.addEventListener("orientationchange", () => setTimeout(check, 150));
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", check);
+    };
+  }, [location.pathname]);
 
   const handleNavClick = (sectionId) => {
     setMenuOpen(false);
@@ -30,6 +47,8 @@ const Navbar = () => {
       requestAnimationFrame(check);
     }
   }, [location]);
+
+  if (hiddenLandscape) return null;
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-white/10 border-b border-white/10">

@@ -543,19 +543,47 @@ const GameJourney = () => {
   const scrollRef = useRef(null);
   const animFrameRef = useRef(null);
   const thrusterStopRef = useRef(null);
-  const lastScrollRef = useRef(0);
 
-  /* Auto-hide header on scroll */
+  /* Auto-hide header on scroll (works for both horizontal scroll container and touch) */
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    if (!launched) return;
+    let lastPos = 0;
+    let lastTouchX = 0;
+
     const onScroll = () => {
+      const el = scrollRef.current;
+      if (!el) return;
       const pos = el.scrollLeft || el.scrollTop || 0;
-      setHeaderVisible(pos <= lastScrollRef.current || pos < 20);
-      lastScrollRef.current = pos;
+      setHeaderVisible(pos <= lastPos || pos < 20);
+      lastPos = pos;
     };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
+
+    const onTouchStart = (e) => { lastTouchX = e.touches[0]?.clientX || 0; };
+    const onTouchMove = (e) => {
+      const x = e.touches[0]?.clientX || 0;
+      const diff = lastTouchX - x;
+      if (Math.abs(diff) > 10) {
+        setHeaderVisible(diff < 0); /* scrolling back = show, forward = hide */
+        lastTouchX = x;
+      }
+    };
+
+    /* Delay to let scrollRef attach after render */
+    const timer = setTimeout(() => {
+      const el = scrollRef.current;
+      if (el) el.addEventListener("scroll", onScroll, { passive: true });
+    }, 100);
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+
+    return () => {
+      clearTimeout(timer);
+      const el = scrollRef.current;
+      if (el) el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+    };
   }, [launched]);
 
   useEffect(() => {
@@ -584,7 +612,7 @@ const GameJourney = () => {
   /* Node center position - SINGLE SOURCE OF TRUTH for both SVG and DOM */
   const getCenter = useCallback((i) => ({
     x: LEFT_PAD + i * SPACING,
-    y: (mLandscape ? 140 : 260) + (i % 2 === 0 ? 0 : (mLandscape ? 60 : 120)),
+    y: (mLandscape ? 80 : 260) + (i % 2 === 0 ? 0 : (mLandscape ? 50 : 120)),
   }), [LEFT_PAD, SPACING, mLandscape]);
 
   /* Get line path from circle EDGE to circle EDGE */
@@ -688,7 +716,7 @@ const GameJourney = () => {
 
   const typeColors = { school: "from-blue-500 to-purple-500", college: "from-orange-500 to-red-500", work: "from-green-500 to-cyan-500" };
   const totalW = LEFT_PAD * 2 + (milestones.length - 1) * SPACING + CIRCLE_SIZE;
-  const totalH = mLandscape ? 320 : 520;
+  const totalH = mLandscape ? 260 : 520;
 
   return (
     <div className="relative min-h-screen bg-[#060a14] text-white overflow-hidden">
@@ -705,11 +733,11 @@ const GameJourney = () => {
         <Motion.div className="absolute bottom-1/4 -right-40 w-[400px] h-[400px] bg-cyan-600/15 rounded-full blur-[120px]" animate={{ x: [0, -50, 0], y: [0, -60, 0] }} transition={{ duration: 19, repeat: Infinity, ease: "easeInOut" }} />
       </div>
 
-      {/* Header — auto-hides on scroll, reappears on scroll back */}
+      {/* Header — hidden in landscape, auto-hides on scroll otherwise */}
       <Motion.div
         className="fixed top-0 left-0 right-0 z-20 bg-[#060a14]/80 backdrop-blur-md"
         initial={{ y: 0 }}
-        animate={{ y: headerVisible ? 0 : -120 }}
+        animate={{ y: mLandscape ? -200 : headerVisible ? 0 : -200 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
       <div className={`${mLandscape ? "pt-2 pb-1 px-4" : "pt-6 pb-4 px-6"} text-center`}>
