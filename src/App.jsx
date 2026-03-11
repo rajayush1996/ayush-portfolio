@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
+import { Analytics } from '@vercel/analytics/react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -30,6 +31,7 @@ function App() {
         </Routes>
       </AnimatePresence>
       {!hideFooterOnRoutes.includes(location.pathname) && <Footer />}
+      <Analytics />
     </div>
   );
 }
